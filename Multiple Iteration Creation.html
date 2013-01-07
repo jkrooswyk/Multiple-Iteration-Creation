@@ -1,0 +1,202 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- Copyright (c) 2010  Rally Software Development Corp.  All rights reserved -->
+<html>
+    <head>
+        <title>Iteration Copy</title>
+        <meta name="Name" content="Iteration Copy" />
+        <meta name="Version" content="1.0" />
+        <meta name="Vendor" content="Rally Software" />
+        <meta name="Author" content="Joel Krooswyk" />
+        <script type="text/javascript" src="/apps/2.0p4/sdk.js?wsapiVersion=1.37"></script>
+
+        <script type="text/javascript">
+        Rally.onReady(function() {
+            Ext.define('CustomApp', {
+                extend: 'Rally.app.App',
+                componentCls: 'app',
+                
+                title: 'Iteration Copy Panel',
+               layout: {
+                    type: 'vbox',
+                    align: 'center'
+               },
+               renderTo: document.body,
+               items: [
+                    {
+                        xtype: 'container',
+                        itemId: 'filters',
+                    },
+                    {
+                        xtype: 'container',
+                        itemId: 'buttons'                        
+                    }
+                ],
+
+                //set up UI
+                launch: function() {
+                    
+                    // date box for new iteration start date
+                    this.down('#filters').add({
+                        xtype: 'rallydatefield',
+                        itemId: 'dateFilter',
+                        fieldLabel: 'New Iteration Start',
+                        value: new Date()
+                    });
+                    
+                    // set iteration length
+                    this.down('#filters').add({
+                        xtype: 'rallynumberfield',
+                        itemId: 'iterationLength',
+                        fieldLabel: 'Length (Days)',
+                        value: 14,
+                        maxValue: 185,
+                        minValue: 7
+                    });
+                    
+                    // planned velocity entry
+                    this.down('#filters').add({
+                        xtype: 'rallynumberfield',
+                        itemId: 'iterationVelocity',
+                        fieldLabel: 'Planned Velocity (Points)',
+                        value: 40,
+                        maxValue: 500,
+                        minValue: 1
+                    });
+                    
+                    // iteration name base textbox (such as Sprint in "Sprint 5")
+                    this.down('#filters').add({
+                        xtype: 'rallytextfield',
+                        itemId: 'iterationText',
+                        fieldLabel: 'Iteration Name (such as "Sprint")',
+                        value: 'Sprint'
+                    });
+                    
+                    //iteration number (such as the 5 of "Sprint 5")
+                    this.down('#filters').add({
+                        xtype: 'rallynumberfield',
+                        itemId: 'iterationNumber',
+                        fieldLabel: 'Starting Iteration Number ("Sprint X")',
+                        value: 2,
+                        maxValue: 999,
+                        minValue: 2
+                    });
+                    
+                    // number box for how many new iterations to create
+                    this.down('#filters').add({
+                        xtype: 'rallynumberfield',
+                        itemId: 'numberField',
+                        fieldLabel: 'Iterations to Create',
+                        value: 10,
+                        increment: 1,
+                        maxValue: 26,
+                        minValue: 1
+                    });
+                    
+                    // Copy start button
+                    this.down('#buttons').add({
+                        xtype: 'rallybutton',
+                        text: 'Click to Create',
+                        scope: this,
+                        handler: function() {
+                            this._GoforCreate();
+                        }
+                    });
+                },
+                
+                //extract values and create copies
+                _GoforCreate: function() {
+                    that = this;
+                    
+                    // get UI content snapshot
+                    var IT = this.down('#iterationLength').getRawValue();
+                    var IV = this.down('#iterationVelocity').getRawValue();
+                    var DA = this.down('#dateFilter').getRawValue();
+                    var NF = this.down('#numberField').getRawValue();
+                    var IN = this.down('#iterationText').getRawValue();
+                    var INUM = this.down('#iterationNumber').getRawValue();
+                    var INUMS = parseInt(INUM)
+                    var ItName = IN + " " + INUM;
+                    //console.log(IT);
+                    //console.log(IV);
+                    //console.log(DA);
+                    //console.log(NF);
+                    //console.log(ItName);
+                    
+                    // Create Iteration Data for each Iteration to be created
+                    Rally.data.ModelFactory.getModel({
+                         type: 'Iteration',
+                         success: function (itermodel) {
+                            var counter = 0;
+                            var Array1 = new Array();
+                            Array1 = Ext.Array.pluck(itermodel.getFields(), 'name');
+                            //Array1 = itermodel.getFields();
+                            console.log(Array1);
+                            while (counter < NF) {
+                        
+                                // calculate start date
+                                var ObjID = "0"
+                                if (counter == 0) {
+                                    var NewDA = new Date(DA);
+                                } else {
+                                    var NewDA = new Date(DA); 
+                                    NewDA.setDate(NewDA.getDate() + (counter * parseInt(IT)));
+                                };
+                                NewStartDA = NewDA.toISOString();
+                                //console.log(NewStartDA);
+                                //console.log(NewDA);
+                        
+                                // calculate end date
+                                NewDA.setDate(NewDA.getDate() + parseInt(IT));
+                                NewEndDA = NewDA.toISOString();
+                                //console.log(NewEndDA);
+                                //console.log(NewDA);
+                        
+                                // update iteration name
+                                var ItName = IN + " " + INUMS;
+                                //console.log(ItName);
+                                //console.log(counter);
+                                
+                                var iterrecord = Ext.create(itermodel, {
+                                    Name: ItName,
+                                    State: 'Planning',
+                                    StartDate: NewStartDA,
+                                    EndDate: NewEndDA,
+                                    Resources: IV
+                                });
+                                
+                                iterrecord.save({
+                                    callback: function(result, operation) {
+                                        console.log(operation);
+                                        if (operation.wasSuccessful()) {
+                                            var objectId = result.get('ObjectID');
+                                            console.log("New iteration ID = " + objectId);
+                                        }
+                                    }
+                                });
+                                
+                                console.log(iterrecord);
+                                counter++;
+                                INUMS++
+                                
+                           }
+                        }
+                    });
+                
+                    // tell user iterations were created
+                    Ext.MessageBox.alert('Finished!', (NF + ' Iterations were created.'));
+                                   
+                }
+
+            });
+            
+            Rally.launchApp('CustomApp', {
+                name: 'Iteration Copy'
+            });
+        });
+    </script>
+
+    <style type="text/css">
+    </style>
+</head>
+<body></body>
+</html>
