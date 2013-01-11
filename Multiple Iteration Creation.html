@@ -141,15 +141,29 @@
                                     var NewDA = new Date(DA); 
                                     NewDA.setDate(NewDA.getDate() + (counter * parseInt(IT)));
                                 };
-                                NewStartDA = NewDA.toISOString();
-                                //console.log(NewStartDA);
-                                //console.log(NewDA);
+                                
+                                //get time zone to set time
+                                NewDATimezone = NewDA.getTimezoneOffset();
+                                TimezoneHours = (NewDATimezone / 60);
+                                NewDA.setHours(12,0,1);
+                                
+                                //format to ISO manually
+                                NewStartDA = ISODateString(NewDA);
+                                console.log("NewStartDA = " + NewStartDA);
+                                
+                                console.log("NewDA = " + NewDA);
+                                //NewStartDA = NewDA.toISOString();
                         
                                 // calculate end date
                                 NewDA.setDate(NewDA.getDate() + parseInt(IT));
-                                NewEndDA = NewDA.toISOString();
-                                //console.log(NewEndDA);
-                                //console.log(NewDA);
+                                NewDA.setHours(12,59,59);
+                                
+                                //format to ISO manually
+                                NewEndDA = ISODateString(NewDA);
+                                console.log("NewEndDA = " + NewStartDA);
+                                
+                                console.log("NewDA = " + NewDA);
+                                //NewEndDA = NewDA.toISOString();
                         
                                 // update iteration name
                                 var ItName = IN + " " + INUMS;
@@ -163,7 +177,7 @@
                                     EndDate: NewEndDA,
                                     Resources: IV
                                 });
-                                
+                                console.log(iterrecord);
                                 iterrecord.save({
                                     callback: function(result, operation) {
                                         console.log(operation);
@@ -184,9 +198,14 @@
                 
                     // tell user iterations were created
                     Ext.MessageBox.alert('Finished!', (NF + ' Iterations were created.'));
-                                   
-                }
+                    
+                    function ISODateString(d){
+                    function pad(n){return n<10 ? '0'+n : n}
+                        return d.getUTCFullYear()+'-'+ pad(d.getUTCMonth()+1)+'-'+ pad(d.getUTCDate())+'T'+ pad(d.getUTCHours())+':'+ pad(d.getUTCMinutes())+':'+ pad(d.getUTCSeconds())+'Z'}
 
+                }
+                
+                
             });
             
             Rally.launchApp('CustomApp', {
