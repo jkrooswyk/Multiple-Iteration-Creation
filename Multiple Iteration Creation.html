@@ -39,7 +39,7 @@
                     this.down('#filters').add({
                         xtype: 'rallydatefield',
                         itemId: 'dateFilter',
-                        fieldLabel: 'New Iteration Start',
+                        fieldLabel: '<B>New Iteration Start</B>',
                         value: new Date()
                     });
                     
@@ -47,7 +47,7 @@
                     this.down('#filters').add({
                         xtype: 'rallynumberfield',
                         itemId: 'iterationLength',
-                        fieldLabel: 'Length (Days)',
+                        fieldLabel: '<B>Length</B> <I>(Days)</I>',
                         value: 14,
                         maxValue: 185,
                         minValue: 7
@@ -57,7 +57,7 @@
                     this.down('#filters').add({
                         xtype: 'rallynumberfield',
                         itemId: 'iterationVelocity',
-                        fieldLabel: 'Planned Velocity (Points)',
+                        fieldLabel: '<B>Planned Velocity</B> <I>(Points)</I>',
                         value: 40,
                         maxValue: 500,
                         minValue: 1
@@ -67,7 +67,7 @@
                     this.down('#filters').add({
                         xtype: 'rallytextfield',
                         itemId: 'iterationText',
-                        fieldLabel: 'Iteration Name (such as "Sprint")',
+                        fieldLabel: '<B>Iteration Name</B> <I>(such as "Sprint")</I>',
                         value: 'Sprint'
                     });
                     
@@ -75,17 +75,17 @@
                     this.down('#filters').add({
                         xtype: 'rallynumberfield',
                         itemId: 'iterationNumber',
-                        fieldLabel: 'Starting Iteration Number ("Sprint X")',
+                        fieldLabel: '<B>Starting Iteration Number</B> <I>(Sprint X)</I>',
                         value: 2,
                         maxValue: 999,
-                        minValue: 2
+                        minValue: 0
                     });
                     
                     // number box for how many new iterations to create
                     this.down('#filters').add({
                         xtype: 'rallynumberfield',
                         itemId: 'numberField',
-                        fieldLabel: 'Iterations to Create',
+                        fieldLabel: '<B>Create This Many Iterations<B>',
                         value: 10,
                         increment: 1,
                         maxValue: 26,
