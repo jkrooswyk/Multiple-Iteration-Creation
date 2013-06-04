@@ -4,37 +4,135 @@
     <head>
         <title>Iteration Copy</title>
         <meta name="Name" content="Iteration Copy" />
-        <meta name="Version" content="1.0" />
+        <meta name="Version" content="1.1" />
         <meta name="Vendor" content="Rally Software" />
         <meta name="Author" content="Joel Krooswyk" />
-        <script type="text/javascript" src="/apps/2.0p4/sdk.js?wsapiVersion=1.37"></script>
+        <script type="text/javascript" src="/apps/2.0p5/sdk.js?wsapiVersion=1.43"></script>
 
         <script type="text/javascript">
         Rally.onReady(function() {
+
+                    var lastthree = 0;
+                    var acceptedCount = 0;
+                    var acceptedStories = new Array();
+                    var avg = 0;
+
             Ext.define('CustomApp', {
                 extend: 'Rally.app.App',
                 componentCls: 'app',
                 
-                title: 'Iteration Copy Panel',
+               title: 'Iteration Copy Panel',
                layout: {
                     type: 'vbox',
                     align: 'center'
                },
-               renderTo: document.body,
+               //renderTo: document.body,
                items: [
                     {
-                        xtype: 'container',
+                        xtype: 'panel',
                         itemId: 'filters',
+                        title: 'Multiple Iteration Creator',
+                        titleAlign: 'center',
+                        flex: 1,
+                        border: 0,
+                        margin: 4
                     },
                     {
                         xtype: 'container',
                         itemId: 'buttons'                        
                     }
                 ],
+                listeners: {
+                    onavgCalc: function(avg) {
+                        console.log("fired, avg = " + avg);
+                        this._renderScreen(avg);
+                    }
+                },
 
                 //set up UI
                 launch: function() {
                     
+                    //create event
+                    this.addEvents('onavgCalc');
+                    this._startStores();
+                },
+
+                _startStores: function() {
+                                                                                                                                     
+                    // get the velocity average from the last 3 iterations
+                                        
+                    var iterationStore = Ext.create('Rally.data.WsapiDataStore', {
+                        model: 'Iteration',
+                        autoLoad: true,
+                        filters: [
+                            {
+                                property: 'EndDate',
+                                operator: '<',
+                                value: 'today'
+                            }
+                        ],
+                        sorters: [
+                            {
+                                property: 'EndDate',
+                                direction: 'DESC'
+                            }
+                        ],
+                        listeners: {
+                            load: function(store, data, success) {
+                              //process data
+                              this._processiterations(data);   
+                            },
+                            scope: this
+                        },
+                        scope: this
+                    });
+                },
+                                   
+                _processiterations: function(myData) { 
+                    Ext.Array.each(myData, function(record) {
+                            var iterationName = record.get('Name');
+                            console.log(this);
+                            if (lastthree < 3) {
+                              Ext.create('Rally.data.WsapiDataStore', {
+                                model: 'User Story',
+                                autoLoad: true,
+                                filters: [
+                                    {
+                                        property: 'Iteration.Name',
+                                        operator: '=',
+                                        value: iterationName
+                                    }
+                                ],
+                                listeners: {
+                                    load: function(store, data, success) {
+                                        acceptedCount = 0;
+                                        Ext.Array.each(data, function(record, avg, acceptedStories) {
+                                            acceptedCount += record.get('PlanEstimate');
+                                        }, this);
+                                        acceptedStories.push(acceptedCount);
+                                        console.log("acceptedstoriesarray = " + acceptedStories);
+                                        avg = ((acceptedStories[0] + acceptedStories[1] + acceptedStories[2])/3);
+                                        avg = avg.toFixed();
+                                        console.log("avg inside = " + avg);
+                                       
+                                        if (acceptedStories.length === 3) {
+                                            // HOW DO WE GET THIS IN SCOPE HERE?
+                                            // Need  to name the stores, then callback when populated to launch event
+                                            this.fireEvent('onavgCalc', avg);
+                                            console.log("fired!");
+                                        }
+                                    },
+                                    scope: this
+                                },
+                                scope: this
+                              });
+                            lastthree++;
+                            }   
+                        }, this);
+                },
+
+                _renderScreen: function(avg) { 
+                                                            
                     // date box for new iteration start date
                     this.down('#filters').add({
                         xtype: 'rallydatefield',
@@ -58,7 +156,7 @@
                         xtype: 'rallynumberfield',
                         itemId: 'iterationVelocity',
                         fieldLabel: '<B>Planned Velocity</B> <I>(Points)</I>',
-                        value: 40,
+                        value: avg,
                         maxValue: 500,
                         minValue: 1
                     });
@@ -86,7 +184,7 @@
                         xtype: 'rallynumberfield',
                         itemId: 'numberField',
                         fieldLabel: '<B>Create This Many Iterations<B>',
-                        value: 10,
+                        value: 2,
                         increment: 1,
                         maxValue: 26,
                         minValue: 1
@@ -101,8 +199,10 @@
                             this._GoforCreate();
                         }
                     });
-                },
-                
+                     
+                  },
+                    
+                                    
                 //extract values and create copies
                 _GoforCreate: function() {
                     that = this;
@@ -142,34 +242,24 @@
                                     NewDA.setDate(NewDA.getDate() + (counter * parseInt(IT)));
                                 };
                                 
-                                //get time zone to set time
-                                NewDATimezone = NewDA.getTimezoneOffset();
-                                TimezoneHours = (NewDATimezone / 60);
-                                NewDA.setHours(12,0,1);
-                                
                                 //format to ISO manually
                                 NewStartDA = ISODateString(NewDA);
-                                console.log("NewStartDA = " + NewStartDA);
-                                
-                                console.log("NewDA = " + NewDA);
-                                //NewStartDA = NewDA.toISOString();
+                                NewStartDA = NewStartDA.substr(0,10);
+                                console.log("NewStartDA = " + NewStartDA + " type = " + typeof(NewStartDA));
                         
                                 // calculate end date
                                 NewDA.setDate(NewDA.getDate() + parseInt(IT));
-                                NewDA.setHours(12,59,59);
                                 
                                 //format to ISO manually
                                 NewEndDA = ISODateString(NewDA);
-                                console.log("NewEndDA = " + NewStartDA);
-                                
-                                console.log("NewDA = " + NewDA);
-                                //NewEndDA = NewDA.toISOString();
+                                NewEndDA = NewEndDA.substr(0,10);
+                                console.log("NewEndDA = " + NewEndDA);
                         
                                 // update iteration name
                                 var ItName = IN + " " + INUMS;
                                 //console.log(ItName);
                                 //console.log(counter);
-                                
+                       
                                 var iterrecord = Ext.create(itermodel, {
                                     Name: ItName,
                                     State: 'Planning',
@@ -177,7 +267,6 @@
                                     EndDate: NewEndDA,
                                     Resources: IV
                                 });
-                                console.log(iterrecord);
                                 iterrecord.save({
                                     callback: function(result, operation) {
                                         console.log(operation);
@@ -188,7 +277,6 @@
                                     }
                                 });
                                 
-                                console.log(iterrecord);
                                 counter++;
                                 INUMS++
                                 
@@ -205,11 +293,10 @@
 
                 }
                 
-                
             });
             
             Rally.launchApp('CustomApp', {
-                name: 'Iteration Copy'
+                name: 'Multiple Iteration Creation'
             });
         });
     </script>
