@@ -4,7 +4,7 @@
     <head>
         <title>Iteration Copy</title>
         <meta name="Name" content="Iteration Copy" />
-        <meta name="Version" content="1.1" />
+        <meta name="Version" content="2.0" />
         <meta name="Vendor" content="Rally Software" />
         <meta name="Author" content="Joel Krooswyk" />
         <script type="text/javascript" src="/apps/2.0p5/sdk.js?wsapiVersion=1.43"></script>
@@ -16,6 +16,12 @@
                     var acceptedCount = 0;
                     var acceptedStories = new Array();
                     var avg = 0;
+                    var lastiterationName = "no previous iteration";
+                    var currentiterationName = "no current iteration";
+                    var currentiterationEnd = "no current iteration";
+                    var lastiterationStart = new Date();
+                    var lastiterationEnd = new Date();
+                    var theme = "no theme";
 
             Ext.define('CustomApp', {
                 extend: 'Rally.app.App',
@@ -26,12 +32,11 @@
                     type: 'vbox',
                     align: 'center'
                },
-               //renderTo: document.body,
                items: [
                     {
                         xtype: 'panel',
                         itemId: 'filters',
-                        title: 'Multiple Iteration Creator',
+                        title: 'Intelligent Iteration Creator',
                         titleAlign: 'center',
                         flex: 1,
                         border: 0,
@@ -44,7 +49,6 @@
                 ],
                 listeners: {
                     onavgCalc: function(avg) {
-                        console.log("fired, avg = " + avg);
                         this._renderScreen(avg);
                     }
                 },
@@ -54,13 +58,43 @@
                     
                     //create event
                     this.addEvents('onavgCalc');
+
                     this._startStores();
                 },
 
                 _startStores: function() {
-                                                                                                                                     
+                      
+                    //check to see if we're in a current iteration
+                    var currentiterationStore = Ext.create('Rally.data.WsapiDataStore', {
+                        model: 'Iteration',
+                        autoLoad: true,
+                        filters: [
+                            {
+                                property: 'StartDate',
+                                operator: '<=',
+                                value: 'today'
+                            },
+                            {
+                                property: 'EndDate',
+                                operator: '>=',
+                                value: 'today'
+                            }
+                        ],
+                        listeners: {
+                            load: function(store, data, success) {
+                              //process data
+                                Ext.Array.each(data, function(record) {
+                                    currentiterationName = record.get('Name');
+                                    currentiterationEnd = record.get('EndDate');
+                                    theme = record.get('Theme');
+                                });
+                            },
+                            scope: this
+                        },
+                        scope: this
+                    }); 
+
                     // get the velocity average from the last 3 iterations
-                                        
                     var iterationStore = Ext.create('Rally.data.WsapiDataStore', {
                         model: 'Iteration',
                         autoLoad: true,
@@ -91,6 +125,14 @@
                 _processiterations: function(myData) { 
                     Ext.Array.each(myData, function(record) {
                             var iterationName = record.get('Name');
+                            if (lastthree == 0) {
+                                lastiterationName = iterationName;
+                                lastiterationStart = new Date(record.get('StartDate'));
+                                lastiterationEnd = new Date(record.get('EndDate'));
+                                if (theme == "no theme") {
+                                    theme = record.get('Theme');
+                                }
+                            }
                             console.log(this);
                             if (lastthree < 3) {
                               Ext.create('Rally.data.WsapiDataStore', {
@@ -110,16 +152,11 @@
                                             acceptedCount += record.get('PlanEstimate');
                                         }, this);
                                         acceptedStories.push(acceptedCount);
-                                        console.log("acceptedstoriesarray = " + acceptedStories);
                                         avg = ((acceptedStories[0] + acceptedStories[1] + acceptedStories[2])/3);
                                         avg = avg.toFixed();
-                                        console.log("avg inside = " + avg);
                                        
                                         if (acceptedStories.length === 3) {
-                                            // HOW DO WE GET THIS IN SCOPE HERE?
-                                            // Need  to name the stores, then callback when populated to launch event
                                             this.fireEvent('onavgCalc', avg);
-                                            console.log("fired!");
                                         }
                                     },
                                     scope: this
@@ -128,25 +165,50 @@
                               });
                             lastthree++;
                             }   
-                        }, this);
+                    }, this);
+
+                    if (lastthree < 3) {
+                        this.fireEvent('onavgCalc', avg);
+                    }
                 },
 
                 _renderScreen: function(avg) { 
-                                                            
+                    //console.log(currentiterationName);     
+
+                    //sets default date for new iteration start
+                    //if no current iteration, use today's date, else set to day after current iteration
+                    if (currentiterationEnd == "no current iteration") {
+                        var startdate = new Date();
+                    } else {
+                        var startdate = new Date(currentiterationEnd);
+                        startdate.setDate(startdate.getDate() + 1)
+                        console.log("startdate calculate = " + startdate)
+                    }
+                    //console.log(startdate); 
+
                     // date box for new iteration start date
                     this.down('#filters').add({
                         xtype: 'rallydatefield',
                         itemId: 'dateFilter',
                         fieldLabel: '<B>New Iteration Start</B>',
-                        value: new Date()
+                        value: startdate
                     });
-                    
+
+                    //auto-calculate length of sprint based on the last one
+                    //console.log(lastiterationStart + " " + lastiterationEnd);
+                    if (currentiterationEnd != "no current iteration") {
+                        var oneDay = 24*60*60*1000; // hours*minutes*seconds*milliseconds
+                        var diffDays = Math.round(Math.abs((lastiterationStart.getTime() - lastiterationEnd.getTime())/(oneDay)));
+                    } else {
+                        var diffDays = 14;
+                    }
+
                     // set iteration length
                     this.down('#filters').add({
                         xtype: 'rallynumberfield',
                         itemId: 'iterationLength',
                         fieldLabel: '<B>Length</B> <I>(Days)</I>',
-                        value: 14,
+                        value: diffDays,
                         maxValue: 185,
                         minValue: 7
                     });
@@ -155,36 +217,80 @@
                     this.down('#filters').add({
                         xtype: 'rallynumberfield',
                         itemId: 'iterationVelocity',
-                        fieldLabel: '<B>Planned Velocity</B> <I>(Points)</I>',
+                        fieldLabel: '<B>Planned Velocity</B> <I>(Average Points)</I>',
                         value: avg,
                         maxValue: 500,
                         minValue: 1
                     });
                     
+                    //console.log("current iteration name " + currentiterationName);
+                    //console.log("last iteration name " + lastiterationName);
+                    //try to create new iteration number dynamically
+                    if ((currentiterationName == "no current iteration") && (lastiterationName == "no previous iteration")) {
+                        var iterationnameDefault = "Iteration";
+                        var iterationnumberDefault = 1;
+                    } else if ((currentiterationName == "no current iteration") && (lastiterationName != "no previous iteration")) {
+                        //create new info from last iteration's name
+                        var splitname = lastiterationName.split(" ");
+                        var n = splitname.length;
+                        if (/^[0-9]+$/.test(splitname[n-1])) {
+                            var iterationnumberDefault = parseInt(splitname[n-1]) + 1;
+                            console.log("using last iteration with number " + iterationnumberDefault);
+                            splitname.splice((n-1), 1);
+                            iterationnameDefault = splitname.join(" ");
+                        } else {
+                            var iterationnumberDefault = 2;
+                            var iterationnameDefault = "Iteration";
+                            console.log("using last iteration, but failed number test ");
+                        }
+                    }  else if (currentiterationName != "no current iteration") {
+                        //create new info from current iteration's name
+                        var splitname = currentiterationName.split(" ");
+                        var n = splitname.length;
+                        if (/^[0-9]+$/.test(splitname[n-1])) {
+                            var iterationnumberDefault = parseInt(splitname[n-1]) + 1;
+                            console.log("using current iteration with number " + iterationnumberDefault);
+                            splitname.splice((n-1), 1);
+                            iterationnameDefault = splitname.join(" ");
+                        } else {
+                            var iterationnumberDefault = 2;
+                            var iterationnameDefault = "Iteration";
+                            console.log("using current iteration, but failed number test");
+                        }
+                    }
+
                     // iteration name base textbox (such as Sprint in "Sprint 5")
                     this.down('#filters').add({
                         xtype: 'rallytextfield',
                         itemId: 'iterationText',
                         fieldLabel: '<B>Iteration Name</B> <I>(such as "Sprint")</I>',
-                        value: 'Sprint'
+                        value: iterationnameDefault
                     });
-                    
+
                     //iteration number (such as the 5 of "Sprint 5")
                     this.down('#filters').add({
                         xtype: 'rallynumberfield',
                         itemId: 'iterationNumber',
                         fieldLabel: '<B>Starting Iteration Number</B> <I>(Sprint X)</I>',
-                        value: 2,
+                        value: iterationnumberDefault,
                         maxValue: 999,
                         minValue: 0
                     });
                     
+                    // iteration theme textbox 
+                    this.down('#filters').add({
+                        xtype: 'rallytextfield',
+                        itemId: 'themeText',
+                        fieldLabel: '<B>Theme</B>',
+                        value: theme
+                    });
+
                     // number box for how many new iterations to create
                     this.down('#filters').add({
                         xtype: 'rallynumberfield',
                         itemId: 'numberField',
                         fieldLabel: '<B>Create This Many Iterations<B>',
-                        value: 2,
+                        value: 1,
                         increment: 1,
                         maxValue: 26,
                         minValue: 1
@@ -201,7 +307,6 @@
                     });
                      
                   },
-                    
                                     
                 //extract values and create copies
                 _GoforCreate: function() {
@@ -216,11 +321,7 @@
                     var INUM = this.down('#iterationNumber').getRawValue();
                     var INUMS = parseInt(INUM)
                     var ItName = IN + " " + INUM;
-                    //console.log(IT);
-                    //console.log(IV);
-                    //console.log(DA);
-                    //console.log(NF);
-                    //console.log(ItName);
+                    var THEME = this.down('#themeText').getRawValue();
                     
                     // Create Iteration Data for each Iteration to be created
                     Rally.data.ModelFactory.getModel({
@@ -265,7 +366,8 @@
                                     State: 'Planning',
                                     StartDate: NewStartDA,
                                     EndDate: NewEndDA,
-                                    Resources: IV
+                                    PlannedVelocity: IV,
+                                    Theme: THEME
                                 });
                                 iterrecord.save({
                                     callback: function(result, operation) {
