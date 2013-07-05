@@ -1,10 +1,11 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <!-- Copyright (c) 2010  Rally Software Development Corp.  All rights reserved -->
+<!-- PLEASE NOTE THIS APP ONLY WORKS WELL FOR DATES SET FROM THE SAME TIMEZONE AS THE SUBSCRIPTION TIMEZONE SETTING! -->
 <html>
     <head>
         <title>Iteration Copy</title>
         <meta name="Name" content="Iteration Copy" />
-        <meta name="Version" content="2.0" />
+        <meta name="Version" content="2.1" />
         <meta name="Vendor" content="Rally Software" />
         <meta name="Author" content="Joel Krooswyk" />
         <script type="text/javascript" src="/apps/2.0p5/sdk.js?wsapiVersion=1.43"></script>
@@ -392,7 +393,7 @@
                                                 var newName = result.get('Name');
                                                 errorED = 0;
                                                 //console.log("obj ID " + objectId);                                            
-                                                successArray.push("<BR> New iteration = " + newName + " / " + objectId);
+                                                successArray.push("<BR> New iteration Created: " + newName + " / ID: " + objectId);
                                         } else {
                                                 //console.log("error is " + operation.error.errors[0]);
                                                 errorED = 1;
@@ -425,7 +426,7 @@
                     if (errorED === 0) {
                         Ext.MessageBox.alert('Finished!', (NF + ' Iteration(s) created:<P>' + successArray));
                     } else {
-                        Ext.MessageBox.alert('An Error Occurred:', errorMSG);
+                        Ext.MessageBox.alert('An Error Occurred', errorMSG);
                     }
                 },
 
