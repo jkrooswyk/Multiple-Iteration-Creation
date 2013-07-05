@@ -9,5 +9,5 @@ Watch a brief usage video here:<P>
 
 http://screencast.com/t/BAc4tpYj1B9m
 
-Screenshot:<P>
+Screenshot (slightly outdated):<P>
 ![Alt text](https://github.com/jkrooswyk/Multiple-Iteration-Creation/raw/master/Screenshot - Multiple Iteration Creation app.png)
