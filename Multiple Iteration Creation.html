@@ -22,23 +22,27 @@
                     var lastiterationStart = new Date();
                     var lastiterationEnd = new Date();
                     var theme = "no theme";
+                    var errorED = 0;
+                    var errorMSG = "unknown";
+                    var successArray = new Array();
+                    var NF = 0;
 
             Ext.define('CustomApp', {
                 extend: 'Rally.app.App',
                 componentCls: 'app',
                 
-               title: 'Iteration Copy Panel',
-               layout: {
+                title: 'Iteration Copy Panel',
+                layout: {
                     type: 'vbox',
                     align: 'center'
-               },
-               items: [
+                },
+                items: [
                     {
                         xtype: 'panel',
                         itemId: 'filters',
                         title: 'Intelligent Iteration Creator',
                         titleAlign: 'center',
-                        flex: 1,
+                        width: 350,
                         border: 0,
                         margin: 4
                     },
@@ -50,6 +54,9 @@
                 listeners: {
                     onavgCalc: function(avg) {
                         this._renderScreen(avg);
+                    },
+                    onfinishedCreating: function() {
+                        this._messageUser();
                     }
                 },
 
@@ -133,7 +140,7 @@
                                     theme = record.get('Theme');
                                 }
                             }
-                            console.log(this);
+                            //console.log(this);
                             if (lastthree < 3) {
                               Ext.create('Rally.data.WsapiDataStore', {
                                 model: 'User Story',
@@ -182,7 +189,7 @@
                     } else {
                         var startdate = new Date(currentiterationEnd);
                         startdate.setDate(startdate.getDate() + 1)
-                        console.log("startdate calculate = " + startdate)
+                        //console.log("startdate calculate = " + startdate)
                     }
                     //console.log(startdate); 
 
@@ -191,6 +198,7 @@
                         xtype: 'rallydatefield',
                         itemId: 'dateFilter',
                         fieldLabel: '<B>New Iteration Start</B>',
+                        width: 350,
                         value: startdate
                     });
 
@@ -209,6 +217,7 @@
                         itemId: 'iterationLength',
                         fieldLabel: '<B>Length</B> <I>(Days)</I>',
                         value: diffDays,
+                        width: 350,
                         maxValue: 185,
                         minValue: 7
                     });
@@ -219,6 +228,7 @@
                         itemId: 'iterationVelocity',
                         fieldLabel: '<B>Planned Velocity</B> <I>(Average Points)</I>',
                         value: avg,
+                        width: 350,
                         maxValue: 500,
                         minValue: 1
                     });
@@ -264,6 +274,7 @@
                         xtype: 'rallytextfield',
                         itemId: 'iterationText',
                         fieldLabel: '<B>Iteration Name</B> <I>(such as "Sprint")</I>',
+                        width: 350,
                         value: iterationnameDefault
                     });
 
@@ -273,6 +284,7 @@
                         itemId: 'iterationNumber',
                         fieldLabel: '<B>Starting Iteration Number</B> <I>(Sprint X)</I>',
                         value: iterationnumberDefault,
+                        width: 350,
                         maxValue: 999,
                         minValue: 0
                     });
@@ -282,6 +294,7 @@
                         xtype: 'rallytextfield',
                         itemId: 'themeText',
                         fieldLabel: '<B>Theme</B>',
+                        width: 350,
                         value: theme
                     });
 
@@ -290,6 +303,7 @@
                         xtype: 'rallynumberfield',
                         itemId: 'numberField',
                         fieldLabel: '<B>Create This Many Iterations<B>',
+                        width: 350,
                         value: 1,
                         increment: 1,
                         maxValue: 26,
@@ -299,8 +313,9 @@
                     // Copy start button
                     this.down('#buttons').add({
                         xtype: 'rallybutton',
-                        text: 'Click to Create',
+                        text: 'Click to Create New Iteration(s)',
                         scope: this,
+                        margin: 8,
                         handler: function() {
                             this._GoforCreate();
                         }
@@ -316,7 +331,7 @@
                     var IT = this.down('#iterationLength').getRawValue();
                     var IV = this.down('#iterationVelocity').getRawValue();
                     var DA = this.down('#dateFilter').getRawValue();
-                    var NF = this.down('#numberField').getRawValue();
+                    NF = this.down('#numberField').getRawValue();
                     var IN = this.down('#iterationText').getRawValue();
                     var INUM = this.down('#iterationNumber').getRawValue();
                     var INUMS = parseInt(INUM)
@@ -331,7 +346,7 @@
                             var Array1 = new Array();
                             Array1 = Ext.Array.pluck(itermodel.getFields(), 'name');
                             //Array1 = itermodel.getFields();
-                            console.log(Array1);
+                            //console.log(Array1);
                             while (counter < NF) {
                         
                                 // calculate start date
@@ -346,7 +361,7 @@
                                 //format to ISO manually
                                 NewStartDA = ISODateString(NewDA);
                                 NewStartDA = NewStartDA.substr(0,10);
-                                console.log("NewStartDA = " + NewStartDA + " type = " + typeof(NewStartDA));
+                                //console.log("NewStartDA = " + NewStartDA + " type = " + typeof(NewStartDA));
                         
                                 // calculate end date
                                 NewDA.setDate(NewDA.getDate() + parseInt(IT));
@@ -354,13 +369,12 @@
                                 //format to ISO manually
                                 NewEndDA = ISODateString(NewDA);
                                 NewEndDA = NewEndDA.substr(0,10);
-                                console.log("NewEndDA = " + NewEndDA);
+                                //console.log("NewEndDA = " + NewEndDA);
                         
                                 // update iteration name
                                 var ItName = IN + " " + INUMS;
-                                //console.log(ItName);
-                                //console.log(counter);
-                       
+                                
+                                //build and save new iteration record
                                 var iterrecord = Ext.create(itermodel, {
                                     Name: ItName,
                                     State: 'Planning',
@@ -371,11 +385,25 @@
                                 });
                                 iterrecord.save({
                                     callback: function(result, operation) {
-                                        console.log(operation);
+                                        //console.log(operation);
+                                        //console.log(result);
                                         if (operation.wasSuccessful()) {
-                                            var objectId = result.get('ObjectID');
-                                            console.log("New iteration ID = " + objectId);
+                                                var objectId = result.get('ObjectID');
+                                                var newName = result.get('Name');
+                                                errorED = 0;
+                                                //console.log("obj ID " + objectId);                                            
+                                                successArray.push("<BR> New iteration = " + newName + " / " + objectId);
+                                        } else {
+                                                //console.log("error is " + operation.error.errors[0]);
+                                                errorED = 1;
+                                                errorMSG = operation.error.errors[0];
                                         }
+
+                                        //console.log("counter, NF, successarraylength, error = " + counter + NF + successArray.length + errorED);
+                                        if (((counter == NF) && (successArray.length == NF)) || (errorED === 1)) {
+                                            that.fireEvent('onfinishedCreating');
+                                        }
+                                            
                                     }
                                 });
                                 
@@ -383,18 +411,24 @@
                                 INUMS++
                                 
                            }
+
                         }
                     });
                 
-                    // tell user iterations were created
-                    Ext.MessageBox.alert('Finished!', (NF + ' Iterations were created.'));
-                    
                     function ISODateString(d){
-                    function pad(n){return n<10 ? '0'+n : n}
+                        function pad(n){return n<10 ? '0'+n : n}
                         return d.getUTCFullYear()+'-'+ pad(d.getUTCMonth()+1)+'-'+ pad(d.getUTCDate())+'T'+ pad(d.getUTCHours())+':'+ pad(d.getUTCMinutes())+':'+ pad(d.getUTCSeconds())+'Z'}
+                },
+                        
+                _messageUser: function() {
+                    //tell user iterations were created
+                    if (errorED === 0) {
+                        Ext.MessageBox.alert('Finished!', (NF + ' Iteration(s) created:<P>' + successArray));
+                    } else {
+                        Ext.MessageBox.alert('An Error Occurred:', errorMSG);
+                    }
+                },
 
-                }
-                
             });
             
             Rally.launchApp('CustomApp', {
