@@ -5,7 +5,7 @@
     <head>
         <title>Iteration Copy</title>
         <meta name="Name" content="Iteration Copy" />
-        <meta name="Version" content="2.1" />
+        <meta name="Version" content="2.2" />
         <meta name="Vendor" content="Rally Software" />
         <meta name="Author" content="Joel Krooswyk" />
         <script type="text/javascript" src="/apps/2.0p5/sdk.js?wsapiVersion=1.43"></script>
@@ -222,7 +222,18 @@
                         maxValue: 185,
                         minValue: 7
                     });
-                    
+
+                    // set iteration length
+                    this.down('#filters').add({
+                        xtype: 'rallynumberfield',
+                        itemId: 'daystoskip',
+                        fieldLabel: '<B>Skip Days Between Iterations</B>',
+                        value: 0,
+                        width: 350,
+                        maxValue: 3,
+                        minValue: 0
+                    });
+
                     // planned velocity entry
                     this.down('#filters').add({
                         xtype: 'rallynumberfield',
@@ -338,6 +349,7 @@
                     var INUMS = parseInt(INUM)
                     var ItName = IN + " " + INUM;
                     var THEME = this.down('#themeText').getRawValue();
+                    var SKIPS = this.down('#daystoskip').getRawValue();
                     
                     // Create Iteration Data for each Iteration to be created
                     Rally.data.ModelFactory.getModel({
@@ -352,25 +364,26 @@
                         
                                 // calculate start date
                                 var ObjID = "0"
-                                if (counter == 0) {
+                                if (counter === 0) {
                                     var NewDA = new Date(DA);
                                 } else {
                                     var NewDA = new Date(DA); 
-                                    NewDA.setDate(NewDA.getDate() + (counter * parseInt(IT)));
+                                    var totalIT = parseInt(IT) + parseInt(SKIPS);
+                                    NewDA.setDate(NewDA.getDate() + (counter * totalIT));
                                 };
                                 
                                 //format to ISO manually
                                 NewStartDA = ISODateString(NewDA);
                                 NewStartDA = NewStartDA.substr(0,10);
-                                //console.log("NewStartDA = " + NewStartDA + " type = " + typeof(NewStartDA));
+                                console.log("NewStartDA = " + NewStartDA + " type = " + typeof(NewStartDA));
                         
                                 // calculate end date
-                                NewDA.setDate(NewDA.getDate() + parseInt(IT));
+                                NewDA.setDate(NewDA.getDate() + parseInt(IT) - 1);
                                 
                                 //format to ISO manually
                                 NewEndDA = ISODateString(NewDA);
                                 NewEndDA = NewEndDA.substr(0,10);
-                                //console.log("NewEndDA = " + NewEndDA);
+                                console.log("NewEndDA = " + NewEndDA);
                         
                                 // update iteration name
                                 var ItName = IN + " " + INUMS;
@@ -390,10 +403,9 @@
                                         //console.log(result);
                                         if (operation.wasSuccessful()) {
                                                 var objectId = result.get('ObjectID');
-                                                var newName = result.get('Name');
                                                 errorED = 0;
                                                 //console.log("obj ID " + objectId);                                            
-                                                successArray.push("<BR> New iteration Name: " + newName + " / ID: " + objectId);
+                                                successArray.push("<BR> New iteration ID: " + objectId);
                                         } else {
                                                 //console.log("error is " + operation.error.errors[0]);
                                                 errorED = 1;
